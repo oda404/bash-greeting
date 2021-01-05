@@ -1,0 +1,151 @@
+#!/usr/bin/bash
+
+awk_2_float_addition()
+{
+    echo "$(awk -v first="$1" -v last="$2" "BEGIN {printf \"%.2f\", first+last; exit(0)}")"
+}
+
+awk_2_float_division()
+{
+    echo "$(awk -v first="$1" -v last="$2" "BEGIN {printf \"%.2f\", first/last; exit(0)}")"
+}
+
+# checks whether the first float is bigger than the second
+awk_2_float_comp()
+{
+    $(awk -v first="$1" -v last="$2" "BEGIN {exit $1 > $2}")
+    echo $?
+}
+
+print_pretty()
+{
+    printf "\e[1;36m>\e[0m $1\n"
+}
+
+has_sensors()
+{
+    $(which sensors) > /dev/null
+    if [ $? == 0 ]; then
+        echo 1
+    else
+        echo 0
+    fi
+}
+
+print_cpu_info()
+{
+    CPU_CORES_MHZ=$(cat /proc/cpuinfo | grep "cpu MHz" | grep -Eo "[0-9]+.[0-9]+")
+    
+    CPU_CORES_MHZ_MEAN=0.0
+    CPU_CORE_COUNT=0
+
+    for CPU_CORE_MHZ in $CPU_CORES_MHZ
+    do
+        ((++CPU_CORE_COUNT))
+        CPU_CORES_MHZ_MEAN=$(awk_2_float_addition $CPU_CORES_MHZ_MEAN $CPU_CORE_MHZ) 
+    done
+
+    CPU_CORES_MHZ_MEAN=$(awk_2_float_division $CPU_CORES_MHZ_MEAN $CPU_CORE_COUNT)
+
+    if [ $(awk_2_float_comp $CPU_CORES_MHZ_MEAN 999) == 1 ]; then
+        CPU_FREQ_PRETTY="$(awk_2_float_division $CPU_CORES_MHZ_MEAN 1000) GHz"
+    else
+        CPU_FREQ_PRETTY="$CPU_CORES_MHZ_MEAN MHz"
+    fi
+
+    if [ $(has_sensors) == 0 ]; then
+        CPU_TEMP_PRETTY="and I would have told you the temperature if you had 'sensors' installed"
+    else
+        TEMP=($(sensors | grep "Package id 0:" | grep -Eo "[+-]([0-9]+.[0-9]+°C)"))
+        STRIPPED_TEMP=$(echo ${TEMP[0]} | grep -Eo "([0-9]+.[0-9]+)")
+
+        if [ "${TEMP[0]:0:1}" == "+" ]; then
+            if [ $(awk_2_float_comp $STRIPPED_TEMP 16.0) == 0 ]; then
+                CPU_TEMP_PRETTY="and a \e[1;37mchilly $STRIPPED_TEMP°C\e[0m"
+            elif [ $(awk_2_float_comp $STRIPPED_TEMP 50.0) == 0 ]; then
+                CPU_TEMP_PRETTY="and a \e[1;36mcool $STRIPPED_TEMP°C\e[0m"
+            elif [ $(awk_2_float_comp $STRIPPED_TEMP 85.0) == 0 ]; then
+                CPU_TEMP_PRETTY="and a \e[1;35mwarm $STRIPPED_TEMP°C\e[0m"
+            else
+                CPU_TEMP_PRETTY="and a \e[1;31mhot $STRIPPED_TEMP°C\e[0m"
+            fi
+        else
+            CPU_TEMP_PRETTY="and a \e[1;37mchilly $STRIPPED_TEMP°C\e[0m"
+        fi
+    fi
+
+    print_pretty "CPU is running at \e[1;31m$CPU_FREQ_PRETTY\e[0m $CPU_TEMP_PRETTY"
+}
+
+print_kernel_info()
+{
+    print_pretty "Host is \e[1;31m$(uname -sr)\e[0m"
+}
+
+print_date()
+{
+    print_pretty "It's currently \e[1;31m$(date +"%A, %b %d, %I:%M:%S %p")\e[0m"
+}
+
+print_random_greeting()
+{
+    GREETINGS=(
+        "Glad to see you are still alive coder..."
+        "Welcome back, the GUI is scary isn't it?"
+        "It's dangerous to go alone! Take this su."
+        "Watch out for the glow in the dark people..."
+        "When was the last time you wrote an interrupt routine?"
+        "Have you checked for unauthorized kernel modules? If I were you, I would."
+        "Who's afraid of the big green frog?"
+        "It's always cool in the lab ...right?"
+        "You better not do *that* thing... I'm watching you!"
+    )
+
+    RAND=$(shuf -i 0-${#GREETINGS[@]} -n 1)
+    if [ $RAND == ${#GREETINGS[@]} ]; then
+        ((--RAND))
+    fi
+    
+    printf "\e[0;32m${GREETINGS[$RAND]}\x1b[0m\n"
+}
+
+print_mem_info()
+{
+    IFS="\n"
+    MEM_INFO=$(cat /proc/meminfo)
+
+    #https://stackoverflow.com/questions/41224738/how-to-calculate-system-memory-usage-from-proc-meminfo-like-htop/41251290#41251290
+
+    MEM_TOTAL_MB=$(echo $MEM_INFO | grep -m 1 "MemTotal:" | grep -Eo "[0-9]+")
+    ((MEM_TOTAL_MB/=1024))
+
+    MEM_FREE_MB=$(echo $MEM_INFO | grep -m 1 "MemFree:" | grep -Eo "[0-9]+")
+    ((MEM_FREE_MB/=1024))
+
+    BUFFERS_MB=$(echo $MEM_INFO | grep -m 1 "Buffers:" | grep -Eo "[0-9]+")
+    ((BUFFERS_MB/=1024))
+
+    CACHED_MB=$(echo $MEM_INFO | grep -m 1 "Cached:" | grep -Eo "[0-9]+")
+    ((CACHED_MB/=1024))
+
+    SRECLAIMABLE_MB=$(echo $MEM_INFO | grep -m 1 "SReclaimable:" | grep -Eo "[0-9]+")
+    ((SRECLAIMABLE_MB/=1024))
+
+    SHMEM_MB=$(echo $MEM_INFO | grep -m 1 "Shmem:" | grep -Eo "[0-9]+")
+    ((SHMEM_MB/=1024))
+
+    USED_MEM_MB=$(((MEM_TOTAL_MB-MEM_FREE_MB-(BUFFERS_MB+(CACHED_MB+SRECLAIMABLE_MB-SHMEM_MB)))))
+
+    print_pretty "Memory usage is sitting at \e[1;31m$USED_MEM_MB MB\e[0m out of \e[1;31m$MEM_TOTAL_MB MB\e[0m"
+}
+
+main()
+{
+    print_random_greeting
+    print_date
+    print_kernel_info
+    print_cpu_info
+    print_mem_info
+}
+
+main
