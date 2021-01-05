@@ -1,7 +1,6 @@
+#!/usr/bin/bash
 # Copyright (c) Olaru Alexandru <xdxalexandru404@gmail.com>
 # Licensed under the MIT license found in the LICENSE file in the root of this repository.
-
-#!/usr/bin/bash
 
 awk_2_float_addition()
 {
@@ -60,6 +59,9 @@ print_cpu_info()
         CPU_TEMP_PRETTY="and I would have told you the temperature if you had 'sensors' installed"
     else
         TEMP=($(sensors | grep "Package id 0:" | grep -Eo "[+-]([0-9]+.[0-9]+°C)"))
+	if [ ! "$TEMP" ]; then
+		TEMP=($(sensors | grep "Tdie:" | grep -Eo "[+-]([0-9]+.[0-9]+°C)"))
+	fi
         STRIPPED_TEMP=$(echo ${TEMP[0]} | grep -Eo "([0-9]+.[0-9]+)")
 
         if [ "${TEMP[0]:0:1}" == "+" ]; then
