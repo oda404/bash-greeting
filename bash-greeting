@@ -1,4 +1,5 @@
 #!/usr/bin/bash
+
 # Copyright (c) Olaru Alexandru <xdxalexandru404@gmail.com>
 # Licensed under the MIT license found in the LICENSE file in the root of this repository.
 
@@ -36,31 +37,20 @@ has_sensors()
 
 print_cpu_info()
 {
-    CPU_CORES_MHZ=$(cat /proc/cpuinfo | grep "cpu MHz" | grep -Eo "[0-9]+.[0-9]+")
-    
-    CPU_CORES_MHZ_MEAN=0.0
-    CPU_CORE_COUNT=0
+    CPU_CORES_MHZ=$(lscpu | grep -m 1 "CPU MHz" | grep -Eo "[0-9]+.[0-9]+")
 
-    for CPU_CORE_MHZ in $CPU_CORES_MHZ
-    do
-        ((++CPU_CORE_COUNT))
-        CPU_CORES_MHZ_MEAN=$(awk_2_float_addition $CPU_CORES_MHZ_MEAN $CPU_CORE_MHZ) 
-    done
-
-    CPU_CORES_MHZ_MEAN=$(awk_2_float_division $CPU_CORES_MHZ_MEAN $CPU_CORE_COUNT)
-
-    if [ $(awk_2_float_comp $CPU_CORES_MHZ_MEAN 999) == 1 ]; then
-        CPU_FREQ_PRETTY="$(awk_2_float_division $CPU_CORES_MHZ_MEAN 1000) GHz"
+    if [ $(awk_2_float_comp $CPU_CORES_MHZ 999) == 1 ]; then
+        CPU_FREQ_PRETTY="$(awk_2_float_division $CPU_CORES_MHZ 1000) GHz"
     else
-        CPU_FREQ_PRETTY="$CPU_CORES_MHZ_MEAN MHz"
+        CPU_FREQ_PRETTY="$CPU_CORES_MHZ MHz"
     fi
 
     if [ $(has_sensors) == 0 ]; then
         CPU_TEMP_PRETTY="and I would have told you the temperature if you had 'sensors' installed"
     else
-        TEMP=($(sensors | grep "Package id 0:" | grep -Eo "[+-]([0-9]+.[0-9]+°C)"))
+        TEMP=($(sensors | grep -m 1 "Package id 0:" | grep -Eo "[+-]([0-9]+.[0-9]+°C)"))
 	if [ ! "$TEMP" ]; then
-		TEMP=($(sensors | grep "Tdie:" | grep -Eo "[+-]([0-9]+.[0-9]+°C)"))
+		TEMP=($(sensors | grep -m 1 "Tdie:" | grep -Eo "[+-]([0-9]+.[0-9]+°C)"))
 	fi
         STRIPPED_TEMP=$(echo ${TEMP[0]} | grep -Eo "([0-9]+.[0-9]+)")
 
