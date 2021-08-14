@@ -112,22 +112,22 @@ print_date()
 print_random_greeting()
 {
     GREETINGS=(
-        "Glad to see you are still alive coder..."
-        "Welcome back, the GUI is scary isn't it?"
-        "It's dangerous to go alone! Take this su."
+	"Segmentation fault (core dumped)"
+	"shit and cum. My final message goodbye."
+        "no love"
+        "Give me a shell and I'll somehow rm -rf /*"
+        "damn."
         "Watch out for the glow in the dark people..."
         "When was the last time you wrote an interrupt routine?"
-        "Have you checked for unauthorized kernel modules? If I were you, I would."
+        "Have you checked for unauthorized kernel modules?"
         "Who's afraid of the big green frog?"
         "It's always cool in the lab ...right?"
         "You better not do *that* thing... I'm watching you!"
 	"\"...there is no reason that you, with patient, skill and lots coffee couldn't do something great.\" - some guy on stack overflow"
+	"Running 3065ms behind... Is the system overloaded ?"
     )
 
-    RAND=$(shuf -i 0-${#GREETINGS[@]} -n 1)
-    if [ $RAND == ${#GREETINGS[@]} ]; then
-        ((--RAND))
-    fi
+    RAND=$(shuf -i 0-$(((${#GREETINGS[@]}-1))) -n 1)
     
     printf "\e[0;32m${GREETINGS[$RAND]}\x1b[0m\n"
 }
